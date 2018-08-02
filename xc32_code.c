@@ -1,7 +1,7 @@
 // DEVCFG3
 // USERID = No Setting
-#pragma config PMDL1WAY = ON            // Peripheral Module Disable Configuration (Allow only one reconfiguration)
-#pragma config IOL1WAY = ON             // Peripheral Pin Select Configuration (Allow only one reconfiguration)
+#pragma config PMDL1WAY = OFF           // Peripheral Module Disable Configuration (Allow only one reconfiguration)
+#pragma config IOL1WAY = OFF             // Peripheral Pin Select Configuration (Allow only one reconfiguration)
 #pragma config FUSBIDIO = ON            // USB USID Selection (Controlled by the USB Module)
 #pragma config FVBUSONIO = ON           // USB VBUS ON Selection (Controlled by USB Module)
 
@@ -56,23 +56,33 @@ int main(){
             counter--;
         
         if (counter == 0xFF){
-            OC1RS = Pwm_h;              // Write new duty cycle
+//            OC1RS = Pwm_h;              // Write new duty cycle
             mode = 1;
+            LATAbits.LATA1 = 1;
         }
     
         else if (counter == 0x0){
-            OC1RS = Pwm_l;              // Write new duty cycle
+//            OC1RS = Pwm_l;              // Write new duty cycle
             mode = 0;
+            LATAbits.LATA1 = 0;
         }
     }
 }
 
 
 void setup() {
+    
     OC1CON = 0;
-    OC1R = 0x000F;
-    OC1RS = 0x000F;
+    OC1R = 0x00FF;
+    OC1RS = 0x00FF;
     OC1CON = 0x0006;
+    
+    TRISASET = 0x0001;
+    TRISASET = 0x0002;
+    ANSELACLR = 0x0001;
+    ANSELACLR = 0x0002;
+    
+    RPA0R = 0b0101;
     
     PR2 = 0x00C7;
     T2CONSET = 0x8000;
