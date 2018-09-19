@@ -6,6 +6,9 @@ Created on Tue Aug 14 20:13:37 2018
 """
 import numpy as np
 import matplotlib.pyplot as plt
+import queue
+import random
+
 
 def plotter(data, runlength, title = "XvsY", Xaxis = "x", Yaxis= "y"):
     pis = np.linspace(0,runlength,len(data))
@@ -72,6 +75,28 @@ def getAverages(Qdelay, increment = 10000, verbose = True):
         print ("-----------------------------------")
     return np.asarray(av)
 
+def addPriority(data, proportion):
+    counter = int(proportion*len(data))
+    if proportion >= 1:
+        priolist = np.ones(len(data))
+        
+    else:
+        priolist = np.zeros(len(data))
+        while counter > 0:
+            i = random.randint(0, len(data)-1)
+            if priolist[i] == 0:
+                priolist[i] = 1
+                counter -= 1
+       
+    print( priolist)   
+    out = np.zeros((len(data),3))      
+    for i in range(len(data)):
+        out[i][0] = priolist[i]
+        out[i][1] = data[i][0]
+        out[i][2] = data[i][1]
+    return out
+
+    
 def simulator(capacity, workload, filename = "tracefile.txt" , 
               readFile = True, genQlen = True, verbose = True, write = True):        #  Takes link capacity in Mbps
     if readFile:
@@ -79,38 +104,45 @@ def simulator(capacity, workload, filename = "tracefile.txt" ,
     else:
         data   = generateTraceFile(capacity, 1000, workload, write)
   
+    data = addPriority(data, 0.2)
     QDelay = np.zeros(len(data))    # Queueing delay 
     RTime  = np.zeros(len(data))    # Response time
     ATime  = np.zeros(len(data))    # Arrival time
     PSize  = np.zeros(len(data))    # Packet size   
-    QLength = np.zeros(len(data))                
+    QLength = np.zeros(len(data))  
+    Queue = queue.PriorityQueue()              
     lastMesTM = 0                   # last message recieved timestamp
     timer = 0
     transTime = 0
 
     for i in range(len(data)):
         message = data[i]
-        ATime[i] = message[0]
-        PSize[i] = message[1]
+        ATime[i] = message[1]
+        PSize[i] = message[2]
+        timer = message[3]
         
-        if genQlen:
-            tempMT = lastMesTM
-            j = i
-            while (tempMT + data[j][0]) < timer:
-                tempMT = tempMT + data[j][0]
-                QLength[i] =  QLength[i] + 1
-                j = j+1
-                if (j == len(data)):
-                    break
-            
-        if (lastMesTM + ATime[i]) > timer:
-            QDelay[i] = lastMesTM + ATime[i] - timer
-            timer = lastMesTM + ATime[i]
-            
-        lastMesTM = lastMesTM + ATime[i]
-        transTime = PSize[i]/capacity
-        RTime[i] = QDelay[i] + transTime
-        timer = timer + transTime
+        
+        
+        
+        
+#        if genQlen:
+#            tempMT = lastMesTM
+#            j = i
+#            while (tempMT + data[j][1]) < timer:
+#                tempMT = tempMT + data[j][2]
+#                QLength[i] =  QLength[i] + 1
+#                j = j+1
+#                if (j == len(data)):
+#                    break
+#            
+#        if (lastMesTM + ATime[i]) > timer:
+#            QDelay[i] = lastMesTM + ATime[i] - timer
+#            timer = lastMesTM + ATime[i]
+#            
+#        lastMesTM = lastMesTM + ATime[i]
+#        transTime = PSize[i]/capacity
+#        RTime[i] = QDelay[i] + transTime
+#        timer = timer + transTime
         
     #getAverages(QDelay, 10000, False) 
     if(verbose):
@@ -146,6 +178,8 @@ def getWorkloadResults():
     plotter(QdelayPWL, 100, "Queue delay vs Workload", "Workload (%)", 
             "Queue delay (us)" )
     
-getWorkloadResults()
+#getWorkloadResults()
 filename = "testfile.txt"
-simulator(100, 0.4, filename, False, genQlen = False, verbose = True)
+data = extractData(filename)
+prio = addPriority(data, 0.4)
+#simulator(100, 0.4, filename, False, genQlen = False, verbose = True)

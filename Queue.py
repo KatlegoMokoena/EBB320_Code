@@ -7,13 +7,18 @@ Created on Tue Sep 18 23:35:48 2018
 
 class Queue():
     data = []
+    Qlength = 0
     
     def Queue(self):
         self.data = []
         
     def add(self, inputdata):
         self.data.append(inputdata)
+        self.Qlength += 1
     
+    def length(self):
+        return self.Qlength
+        
     def pop(self):
         low = -1
         res = 0
@@ -25,6 +30,7 @@ class Queue():
         if low == -1:
             return None
         
+        self.Qlength -= 1
         ret  = self.data[res]
         self.data[res][0] = -1
         return ret

@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import Queue
 import random
-
+import generation
 
 def plotter(data, runlength, title = "XvsY", Xaxis = "x", Yaxis= "y"):
     pis = np.linspace(0,runlength,len(data))
@@ -27,7 +27,7 @@ def extractData(filename):
         i= i+1
         if i != 1:
             temp = line.split(',')
-            tempIntArray = [int(temp[0]), int(temp[1])]
+            tempIntArray = [int(temp[0]), int(temp[1]), int(temp[2])]
             out.append(tempIntArray)   
     file.close() 
     return out
@@ -88,9 +88,6 @@ def addPriority(data, proportion):
                 priolist[i] = 1
                 counter -= 1
       
-#    priolist = [ 0 , 1,  1,  0 , 1 , 0 , 1 , 0]
-    print( priolist)   
-    
     out = np.zeros((len(data),4))      
     for i in range(len(data)):
         out[i][0] = priolist[i]
@@ -99,15 +96,24 @@ def addPriority(data, proportion):
         out[i][3] = i
     return out
 
+def addAbsArTime(data):      
+    out = np.zeros((len(data),4))      
+    for i in range(len(data)):
+        out[i][0] = data[i][0]
+        out[i][1] = data[i][1]
+        out[i][2] = data[i][2]
+        out[i][3] = i
+    return out
     
 def simulator(capacity, workload, filename = "tracefile.txt" , 
-              readFile = True, genQlen = True, verbose = True, write = True):        #  Takes link capacity in Mbps
+              readFile = True, genQlen = True, verbose = True, write = True, 
+              priorityDis = 1):        #  Takes link capacity in Mbps
     if readFile:
         data   = extractData(filename)
     else:
         data   = generateTraceFile(capacity, 1000, workload, write)
   
-    data = addPriority(data, 0.5)
+    data = addAbsArTime(data)
     QDelay = np.zeros(len(data))    # Queueing delay 
     RTime  = np.zeros(len(data))    # Response time
     ATime  = np.zeros(len(data))    # Arrival time
@@ -132,26 +138,31 @@ def simulator(capacity, workload, filename = "tracefile.txt" ,
             if (j < len(data)):
                 while (tempMT + data[j][1]) < timer:
                     tempMT = tempMT + data[j][1]
-                    QLength[i] =  QLength[i] + 1
                     j = j+1
                     if (j == len(data)):
                         break
                     if sentP[j] == 0:
                         q.add([data[j][0], data[j]])
                 
-           
+            QLength[i] =  q.length()
         sentPacket = q.pop()
         if sentPacket == None:
             k = i
+            
         else:
             k = int(sentPacket[1][3])
+            if sentPacket[1][2] < timer:
+                QDelay[k] = timer - sentPacket[1][2] 
         sentP[k] = 1
-        print( "sentPacket " + str(k))
+        if (k % 10000 == 0):
+            print( "sentPacket " + str(k))
         sentorder[k] = i
         
-        if (lastMesTM + ATime[k]) > timer:
-            QDelay[k] = lastMesTM + ATime[k] - timer
-            timer = lastMesTM + ATime[k]
+#        if (lastMesTM + ATime[k]) > timer:
+#            QDelay[k] = lastMesTM + ATime[k] - timer
+#            timer = lastMesTM + ATime[k]
+        
+            
             
         lastMesTM = lastMesTM + ATime[k]
         transTime = PSize[k]/capacity
@@ -194,8 +205,20 @@ def getWorkloadResults():
     
 #getWorkloadResults()
 filename = "testfile.txt"
-filename = "tracefile.txt"
+filename = "tracefiles.txt"
 #data = extractData(filename)
 #prio = addPriority(data, 0.5)
 #simulator(100, 0.4, filename, False, genQlen = False, verbose = True)
-QDelay, QLength ,dataS, sentorder = simulator(1,1,filename)
+qlen = []
+qdelay = []
+dataS = None
+for i in range(20):
+    print ("iteration : " + str(i))
+    if i == 0:
+        continue
+    generation.makeTrace(1000,1000,1,500)
+    QDelay, QLength ,dataS, sentorder = simulator(1,1,filename,  verbose = False)
+    qlen.append(QLength.mean())
+    qdelay.append(QDelay)
+    
+plotter(qdelay, 100, "DDD", "DDDs","DDDCC")
