@@ -6,7 +6,7 @@ Created on Tue Aug 14 20:13:37 2018
 """
 import numpy as np
 import matplotlib.pyplot as plt
-import queue
+import Queue
 import random
 
 
@@ -87,13 +87,16 @@ def addPriority(data, proportion):
             if priolist[i] == 0:
                 priolist[i] = 1
                 counter -= 1
-       
+      
+#    priolist = [ 0 , 1,  1,  0 , 1 , 0 , 1 , 0]
     print( priolist)   
-    out = np.zeros((len(data),3))      
+    
+    out = np.zeros((len(data),4))      
     for i in range(len(data)):
         out[i][0] = priolist[i]
         out[i][1] = data[i][0]
         out[i][2] = data[i][1]
+        out[i][3] = i
     return out
 
     
@@ -104,45 +107,56 @@ def simulator(capacity, workload, filename = "tracefile.txt" ,
     else:
         data   = generateTraceFile(capacity, 1000, workload, write)
   
-    data = addPriority(data, 0.2)
+    data = addPriority(data, 0.5)
     QDelay = np.zeros(len(data))    # Queueing delay 
     RTime  = np.zeros(len(data))    # Response time
     ATime  = np.zeros(len(data))    # Arrival time
-    PSize  = np.zeros(len(data))    # Packet size   
-    QLength = np.zeros(len(data))  
-    Queue = queue.PriorityQueue()              
+    PSize  = np.zeros(len(data))    # Packet size 
+    sentP  = np.zeros(len(data))    # Packets sent
+    QLength = np.zeros(len(data)) 
+    sentorder = np.zeros(len(data)) 
+    q = Queue.Queue()              
     lastMesTM = 0                   # last message recieved timestamp
     timer = 0
     transTime = 0
 
+    j = 0
     for i in range(len(data)):
         message = data[i]
         ATime[i] = message[1]
         PSize[i] = message[2]
-        timer = message[3]
+        #timer = message[3]
+
+        if genQlen:
+            tempMT = lastMesTM
+            if (j < len(data)):
+                while (tempMT + data[j][1]) < timer:
+                    tempMT = tempMT + data[j][1]
+                    QLength[i] =  QLength[i] + 1
+                    j = j+1
+                    if (j == len(data)):
+                        break
+                    if sentP[j] == 0:
+                        q.add([data[j][0], data[j]])
+                
+           
+        sentPacket = q.pop()
+        if sentPacket == None:
+            k = i
+        else:
+            k = int(sentPacket[1][3])
+        sentP[k] = 1
+        print( "sentPacket " + str(k))
+        sentorder[k] = i
         
-        
-        
-        
-        
-#        if genQlen:
-#            tempMT = lastMesTM
-#            j = i
-#            while (tempMT + data[j][1]) < timer:
-#                tempMT = tempMT + data[j][2]
-#                QLength[i] =  QLength[i] + 1
-#                j = j+1
-#                if (j == len(data)):
-#                    break
-#            
-#        if (lastMesTM + ATime[i]) > timer:
-#            QDelay[i] = lastMesTM + ATime[i] - timer
-#            timer = lastMesTM + ATime[i]
-#            
-#        lastMesTM = lastMesTM + ATime[i]
-#        transTime = PSize[i]/capacity
-#        RTime[i] = QDelay[i] + transTime
-#        timer = timer + transTime
+        if (lastMesTM + ATime[k]) > timer:
+            QDelay[k] = lastMesTM + ATime[k] - timer
+            timer = lastMesTM + ATime[k]
+            
+        lastMesTM = lastMesTM + ATime[k]
+        transTime = PSize[k]/capacity
+        RTime[i] = QDelay[k] + transTime
+        timer = timer + transTime
         
     #getAverages(QDelay, 10000, False) 
     if(verbose):
@@ -152,7 +166,7 @@ def simulator(capacity, workload, filename = "tracefile.txt" ,
         print ("Average Response time in ms: " + str(RTime.mean()/10**3))
         print ("Average Queueing delay in ms: " + str(QDelay.mean()/10**3))
     
-    return QDelay.mean(), QLength
+    return QDelay.mean(), QLength ,data, sentorder
 
 def getWorkloadResults():
     filename = "testfile.txt"
@@ -180,6 +194,8 @@ def getWorkloadResults():
     
 #getWorkloadResults()
 filename = "testfile.txt"
-data = extractData(filename)
-prio = addPriority(data, 0.4)
+filename = "tracefile.txt"
+#data = extractData(filename)
+#prio = addPriority(data, 0.5)
 #simulator(100, 0.4, filename, False, genQlen = False, verbose = True)
+QDelay, QLength ,dataS, sentorder = simulator(1,1,filename)
